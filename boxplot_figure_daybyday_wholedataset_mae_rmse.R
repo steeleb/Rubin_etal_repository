@@ -56,8 +56,10 @@ alg_data <- full_join(alldata_dbd, wd_data) %>%
   arrange(Model.Name)
 
 #get some summary stats for paper
-training <- read_csv('5.a.90.10.datasets/90percent_7.23.20.csv')
-test <- read_csv('5.a.90.10.datasets/OOB_7.23.20.csv')
+training <- read_csv('5.a.90.10.datasets/90percent_7.23.20.csv') %>% 
+  mutate(dataset = 'training')
+test <- read_csv('5.a.90.10.datasets/OOB_7.23.20.csv') %>% 
+  mutate(dataset = 'testing')
 
 tandt <- full_join(training, test)
 
@@ -73,13 +75,21 @@ max(tandt$sat_date)
 #number of samples
 nrow(tandt)
 
-#mean, sd
-mean(test$secchi_depth_m)
-sd(test$secchi_depth_m)
-training <- training %>% 
+#5 number summary
+tandt <- tandt %>% 
   filter(B3>3)
-mean(training$secchi_depth_m)
-sd(training$secchi_depth_m)
+tandt_summary <- tandt %>% 
+  group_by(dataset) %>% 
+  dplyr::summarise(min_SD = round(min(secchi_depth_m), digits = 1),
+            IQR_SD = IQR(secchi_depth_m),
+            median_SD = median(secchi_depth_m),
+            max_SD = round(max(secchi_depth_m), digits = 1)) %>% 
+  dplyr::mutate(FQ_SD = round(median_SD - 0.5*(IQR_SD), digits = 1),
+         TQ_SD = round(median_SD + 0.5*(IQR_SD), digits = 1),
+         median_SD = round(median_SD, digits = 1)) %>% 
+  ungroup() %>% 
+  select(dataset, min_SD, FQ_SD, median_SD, TQ_SD, max_SD)
+# write_csv(tandt_summary, 'Rubin.MS/summary_data/wholedataset_summary/wholedataset_insitu_summarystats.csv')
 
 #range of MAE, RMSE values for RF dbd
 rf_dbd <- alldata_dbd %>% 

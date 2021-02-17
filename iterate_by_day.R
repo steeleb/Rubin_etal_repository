@@ -66,26 +66,6 @@ match_df <- full_join(count_train, count_test) %>%
   mutate(sat_date = as.Date(sat_date))
 match_df
 
-# add stats of the observed dataset #
-train_stats <-  left_join(count_train, training) %>% 
-  group_by(sat_date, n_train) %>% 
-  summarise(min_SD_obs_train = round(min(secchi_depth_m), digits = 1),
-            mean_SD_obs_train = round(mean(secchi_depth_m), digits = 1),
-            median_SD_obs_train = round(median(secchi_depth_m), digits = 1),
-            max_SD_obs_train = round(max(secchi_depth_m), digits = 1),
-            sd_SD_obs_train = round(sd(secchi_depth_m), digits = 1))
-test_stats <-  left_join(count_test, test) %>% 
-  group_by(sat_date, n_test) %>% 
-  summarise(min_SD_obs_test = round(min(secchi_depth_m), digits = 1),
-            mean_SD_obs_test = round(mean(secchi_depth_m), digits = 1),
-            median_SD_obs_test = round(median(secchi_depth_m), digits = 1),
-            max_SD_obs_test = round(max(secchi_depth_m), digits = 1),
-            sd_SD_obs_test = round(sd(secchi_depth_m), digits = 1))
-
-train_test_dbd_obs_stats <- full_join(train_stats, test_stats)
-
-# write_csv(train_test_dbd_obs_stats, 'Rubin.MS/summary_data/wholedataset_summary/day_by_day_insitu_summarystats.csv')
-
 #make histograms for each sat day
 data_filter <- data %>% 
   mutate(sat_date = as.Date(sat_date)) %>% 
@@ -104,6 +84,33 @@ for (i in 1:nrow(match_df)) {
   histogram
   ggsave(paste0('Rubin.MS/summary_data/plots/day_by_day/histograms/train_test_histogram_',match_df$sat_date[i],'.jpg'), units = 'in', height = 5, width = 5, dpi = 250)
 }
+
+# add stats of the observed dataset with 5-number summary
+train_stats <-  left_join(count_train, training) %>% 
+  group_by(sat_date, n_train) %>% 
+  summarise(min_SD_obs_train = round(min(secchi_depth_m), digits = 1),
+            IQR_SD_obs_train = IQR(secchi_depth_m),
+            median_SD_obs_train = median(secchi_depth_m),
+            max_SD_obs_train = round(max(secchi_depth_m), digits = 1)) %>% 
+  mutate(FQ_SD_obs_train = round(median_SD_obs_train - 0.5*(IQR_SD_obs_train), digits = 1),
+         TQ_SD_obs_train = round(median_SD_obs_train + 0.5*(IQR_SD_obs_train), digits = 1),
+         median_SD_obs_train = round(median_SD_obs_train, digits = 1)) %>% 
+select(sat_date, n_train, min_SD_obs_train, FQ_SD_obs_train, median_SD_obs_train, TQ_SD_obs_train, max_SD_obs_train)
+  
+test_stats <-  left_join(count_test, test) %>% 
+  group_by(sat_date, n_test) %>% 
+  summarise(min_SD_obs_test = round(min(secchi_depth_m), digits = 1),
+            IQR_SD_obs_test = IQR(secchi_depth_m),
+            median_SD_obs_test = median(secchi_depth_m),
+            max_SD_obs_test = round(max(secchi_depth_m), digits = 1)) %>% 
+  mutate(FQ_SD_obs_test = round(median_SD_obs_test - 0.5*(IQR_SD_obs_test), digits = 1),
+         TQ_SD_obs_test = round(median_SD_obs_test + 0.5*(IQR_SD_obs_test), digits = 1),
+         median_SD_obs_test = round(median_SD_obs_test, digits = 1)) %>% 
+  select(sat_date, n_test, min_SD_obs_test, FQ_SD_obs_test, median_SD_obs_test, TQ_SD_obs_test, max_SD_obs_test)
+
+train_test_dbd_obs_stats <- full_join(train_stats, test_stats)
+
+# write_csv(train_test_dbd_obs_stats, 'Rubin.MS/summary_data/wholedataset_summary/day_by_day_insitu_summarystats_v2.csv')
 
 match_template <- match_df %>% 
   mutate(mae_train = as.numeric(''),
